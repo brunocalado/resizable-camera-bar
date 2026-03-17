@@ -2,7 +2,7 @@
 // Resizable Camera Bar — bar initialisation & observer management
 // ============================================================
 
-import { debounce } from "./constants.js";
+import { debounce, MAX_INIT_RETRIES } from "./constants.js";
 import { get } from "./settings.js";
 import {
   getPosition, isFoundryMinimized, clearInlineSize, applySize, loadSize,
@@ -39,13 +39,16 @@ function cleanupObservers(bar) {
  * @param {HTMLElement} bar - The #camera-views element.
  * @returns {void}
  */
-export function initBar(bar) {
+export function initBar(bar, _retries = 0) {
   if (!bar || bar.id !== "camera-views") return;
 
   const pos = getPosition(bar);
   if (!pos) {
-    // Bar has not yet received its position class — retry after layout settles.
-    setTimeout(() => initBar(bar), 150);
+    if (_retries >= MAX_INIT_RETRIES) {
+      console.warn("resizable-camera-bar | initBar: position class never appeared, giving up.");
+      return;
+    }
+    setTimeout(() => initBar(bar, _retries + 1), 150);
     return;
   }
 
@@ -62,10 +65,6 @@ export function initBar(bar) {
   createBarIcons(bar);
   applyNoVideoVisibility(bar);
   attachVideoListeners(bar);
-
-  // Deferred checks handle streams that initialise after the bar renders.
-  setTimeout(() => applyNoVideoVisibility(bar), 500);
-  setTimeout(() => applyNoVideoVisibility(bar), 1500);
 
   const onWinResize = debounce(() => {
     const h = _handles.get(bar);

@@ -9,6 +9,14 @@
 - Moved `resizable.css` to `styles/resizable.css`.
 - Updated `module.json` `esmodules` and `styles` paths to reflect new locations.
 
+### [Fixed]
+- `initBar` retry loop now caps at 20 attempts (3 s) instead of retrying indefinitely when the position class never appears.
+- Removed fragile `setTimeout` cascades for video detection in `initBar` and `userConnected`; video stream readiness is now fully event-driven via `attachVideoListeners`.
+- Replaced `setInterval` polling for color picker injection with a `MutationObserver` that reacts instantly when the settings tab section renders.
+
+### [Changed]
+- Replaced ad-hoc DOM node property flags (`_rcbListened`, `_rcbPickerInjected`, `_rcbChangeListened`) with `WeakSet` instances for cleaner, garbage-collection-friendly duplicate-guard tracking.
+
 ---
 
 ## v2.0.6 — 2026-03-16

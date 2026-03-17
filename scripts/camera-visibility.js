@@ -6,6 +6,9 @@ import { debounce } from "./constants.js";
 import { get } from "./settings.js";
 import { updateWarningIcon } from "./icons.js";
 
+/** Tracks video elements that already have RCB listeners attached. */
+const _listenedVideos = new WeakSet();
+
 /**
  * Returns true when a camera view slot has no active video stream.
  * Checks the no-video class, video element visibility, srcObject, and track state.
@@ -29,14 +32,15 @@ export function isCameraOff(view) {
 /**
  * Attaches play/pause/emptied/loadedmetadata listeners to all video elements
  * inside the bar that have not yet been instrumented.
- * The _rcbListened flag prevents duplicate listeners on re-init.
+ * A WeakSet prevents duplicate listeners on re-init; entries are
+ * garbage-collected when the element is removed from the DOM.
  * @param {HTMLElement} bar
  * @returns {void}
  */
 export function attachVideoListeners(bar) {
   bar.querySelectorAll("video.user-camera").forEach(video => {
-    if (video._rcbListened) return;
-    video._rcbListened = true;
+    if (_listenedVideos.has(video)) return;
+    _listenedVideos.add(video);
     const update = debounce(() => applyNoVideoVisibility(bar), 80);
     video.addEventListener("play",            update);
     video.addEventListener("pause",           update);

@@ -15,3 +15,6 @@ export function debounce(fn, delay = 100) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
 }
+
+/** Maximum number of times initBar will retry waiting for a position class. */
+export const MAX_INIT_RETRIES = 20; // 20 × 150 ms = 3 s max

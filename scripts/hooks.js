@@ -13,13 +13,18 @@ import { applyNoVideoVisibility, attachVideoListeners } from "./camera-visibilit
 /** Tracks whether any setting in our panel was changed since it was opened. */
 let _settingsChanged = false;
 
+/** Tracks <section> elements that already have the settings change listener. */
+const _listenedSections = new WeakSet();
+/** Tracks <input> elements that already have the color picker injected. */
+const _injectedPickers = new WeakSet();
+
 // ─── Color picker injection ──────────────────────────────────
 
 /**
  * Injects a native color swatch (<input type="color">) beside the handleColor text input.
  * Both controls stay in sync: swatch updates the text field and vice versa.
- * Polls up to 30 times (3 s) because the settings panel tab content may render
- * asynchronously after the hook fires.
+ * Called eagerly from renderSettingsConfig; a MutationObserver retries if the
+ * tab section hasn't rendered yet.
  * @param {HTMLElement} root - The settings config application element.
  * @returns {boolean} True if the picker was successfully injected or already present.
  */
@@ -28,14 +33,14 @@ function _injectColorPicker(root) {
                 ?? root?.querySelector(`[data-tab="${MODULE_ID}"]`);
   if (!section) return false;
 
-  if (!section._rcbChangeListened) {
+  if (!_listenedSections.has(section)) {
     section.addEventListener("change", () => { _settingsChanged = true; }, { passive: true });
-    section._rcbChangeListened = true;
+    _listenedSections.add(section);
   }
 
   const textInput = section.querySelector(`input[name="${MODULE_ID}.handleColor"]`);
-  if (!textInput || textInput._rcbPickerInjected) return true;
-  textInput._rcbPickerInjected = true;
+  if (!textInput || _injectedPickers.has(textInput)) return true;
+  _injectedPickers.add(textInput);
 
   const wrapper = document.createElement("div");
   wrapper.style.cssText = "display:flex; align-items:center; gap:6px;";
@@ -88,17 +93,13 @@ Hooks.on("renderSettingsConfig", (_app, html) => {
   // Em ApplicationV2 (v13), html é sempre HTMLElement — sem jQuery.
   const root = html instanceof HTMLElement ? html : html?.[0] ?? html;
 
-  const section = root?.querySelector(`section[data-tab="${MODULE_ID}"]`)
-                ?? root?.querySelector(`[data-tab="${MODULE_ID}"]`);
-  if (section) {
-    section.addEventListener("change", () => { _settingsChanged = true; }, { passive: true });
-  }
-
   if (!_injectColorPicker(root)) {
-    let attempts = 0;
-    const poll = setInterval(() => {
-      if (_injectColorPicker(root) || ++attempts > 30) clearInterval(poll);
-    }, 100);
+    const mo = new MutationObserver(() => {
+      if (_injectColorPicker(root)) mo.disconnect();
+    });
+    mo.observe(root, { childList: true, subtree: true });
+    // Safety timeout: disconnect after 5 s to avoid a zombie observer.
+    setTimeout(() => mo.disconnect(), 5000);
   }
 });
 
@@ -147,10 +148,9 @@ Hooks.on("userConnected", (_user, connected) => {
   if (!connected) return;
   const bar = document.querySelector("#camera-views");
   if (!bar) return;
-  const check = () => { applyNoVideoVisibility(bar); attachVideoListeners(bar); };
-  setTimeout(check, 300);
-  setTimeout(check, 1000);
-  setTimeout(check, 3000);
+  // Run once immediately; video event listeners handle stream readiness reactively.
+  applyNoVideoVisibility(bar);
+  attachVideoListeners(bar);
 });
 
 // Quando o GM usa "Hide User" / "Show User", o Foundry re-renderiza a camera bar
