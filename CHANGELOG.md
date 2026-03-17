@@ -2,6 +2,15 @@
 
 ---
 
+## v2.1.0 — 2026-03-17
+
+### [Changed]
+- Moved `resizable.js` to `scripts/` and split into 9 ES modules: `constants.js`, `settings.js`, `readme.js`, `bar-utils.js`, `handle.js`, `icons.js`, `camera-visibility.js`, `bar-init.js`, `hooks.js`, with `main.js` as entry point.
+- Moved `resizable.css` to `styles/resizable.css`.
+- Updated `module.json` `esmodules` and `styles` paths to reflect new locations.
+
+---
+
 ## v2.0.6 — 2026-03-16
 
 Full API audit and hardening pass. All changes are backwards-compatible — no settings migration required.
